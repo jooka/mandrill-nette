@@ -2,12 +2,16 @@
 
 namespace Fabian\Mandrill;
 
+use Nette\Mail\Mailer;
+use Nette\Mail\Message;
+
 /**
  * Provides functionality to compose and send email via Mandrill service.
  *
  * @author Lukas Vana
  */
-class MandrillMailer implements \Nette\Mail\IMailer {
+class MandrillMailer implements Mailer
+{
     /**
      * Mandrill API key
      * @var string
@@ -18,7 +22,7 @@ class MandrillMailer implements \Nette\Mail\IMailer {
      * Mandrill API endpoint
      * @var string
      */
-    private $apiEndpoint = "https://mandrillapp.com/api/1.0";
+    private $apiEndpoint = 'https://mandrillapp.com/api/1.0';
 
     /**
      * Input and output format
@@ -36,10 +40,12 @@ class MandrillMailer implements \Nette\Mail\IMailer {
      * Sends email via Mandrill.
      * @param $message
      * @return void
+     * @throws MandrillException
      */
-    public function send(\Nette\Mail\Message $message)
+    public function send(Message $message): void
     {
         if ($message instanceof Message) {
+            /** @var \Fabian\Mandrill\Message $message */
             $params = $message->getMandrillParams();
         } else {
             $params = $this->parseNetteMessage($message);
@@ -55,12 +61,13 @@ class MandrillMailer implements \Nette\Mail\IMailer {
 
     /**
      * Sends email via Mandrill template.
-     * @param $message
-     * @param $templateName
-     * @param $templateContent dynamic content
+     * @param Message $message
+     * @param string $templateName
+     * @param string $templateContent
      * @return void
+     * @throws MandrillException
      */
-    public function sendTemplate(\Nette\Mail\Message $message, $templateName, $templateContent)
+    public function sendTemplate(Message $message, string $templateName, string $templateContent): void
     {
         if ($message instanceof Message) {
             $params = $message->getMandrillParams();
@@ -81,12 +88,13 @@ class MandrillMailer implements \Nette\Mail\IMailer {
 
     /**
      * Parse Nette Message headers to Mandrill API params
-     * @param \Nette\Mail\Message $message
+     * @param Message $message
      * @return array
+     * @throws MandrillException
      */
-    private function parseNetteMessage(\Nette\Mail\Message $message)
+    private function parseNetteMessage(Message $message): array
     {
-        $params = array();
+        $params = [];
 
         $params['subject'] = $message->getSubject();
         $params['text'] = $message->getBody();
@@ -98,9 +106,9 @@ class MandrillMailer implements \Nette\Mail\IMailer {
         $params['from_email'] = key($from);
         $params['from_name'] = $from[$params['from_email']];
         $recipients = $message->getHeader('To');
-        $params['to'] = array();
+        $params['to'] = [];
         foreach ($recipients as $email => $name) {
-            $recipient = array('email' => $email);
+            $recipient = ['email' => $email];
             if (!empty($name)) {
                 $recipient['name'] = $name;
             }
@@ -116,12 +124,12 @@ class MandrillMailer implements \Nette\Mail\IMailer {
     }
 
     /**
-     * Call Mandrill API and send email
+     * @param string $method
      * @param array $params
-     * @return string
+     * @return array
      * @throws MandrillException
      */
-    private function callApi($method, array $params)
+    private function callApi(string $method, array $params): array
     {
         $params['key'] = $this->apiKey;
         $params = json_encode($params);
@@ -133,11 +141,8 @@ class MandrillMailer implements \Nette\Mail\IMailer {
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);
         curl_setopt($ch, CURLOPT_TIMEOUT, 600);
-        curl_setopt($ch, CURLOPT_URL, $this->apiEndpoint.$method.'.'
-            .$this->apiFormat);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-            'Content-Type: application/'.$this->apiFormat)
-        );
+        curl_setopt($ch, CURLOPT_URL, $this->apiEndpoint.$method . '.' . $this->apiFormat);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/'.$this->apiFormat]);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $params);
 
         if (curl_error($ch)) {
@@ -161,7 +166,8 @@ class MandrillMailer implements \Nette\Mail\IMailer {
         return $result;
     }
 
-    private function parseAttachments(\Nette\Mail\Message $message){
+    private function parseAttachments(Message $message): array
+    {
         $attachments = array();
 
         foreach ($message->getAttachments() as $attachment) {
@@ -175,17 +181,20 @@ class MandrillMailer implements \Nette\Mail\IMailer {
         return $attachments;
       }
 
-    private function extractFilename($header){
+    private function extractFilename($header): array
+    {
         preg_match('/filename="([a-zA-Z0-9. -_]{1,})"/', $header, $matches);
         return $matches[1];
     }
 
-    private function encodeMessage($attachment){
+    private function encodeMessage($attachment): string
+    {
         $lines = explode("\n", $attachment->getEncodedMessage());
 
         $output = '';
+        $count = count($lines);
 
-        for($i=4; $i < count($lines); $i++){
+        for ($i = 4; $i < $count; $i++){
           $output .= $lines[$i];
         }
 

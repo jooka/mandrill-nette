@@ -2,6 +2,6 @@
 
 namespace Fabian\Mandrill;
 
-class MandrillException extends \Exception {
-    
+class MandrillException extends \Exception
+{
 }
