@@ -57,12 +57,24 @@ class Message extends NetteMessage
     }
     
     /**
+    * @param string $email
+    * @param string|null $name
+    * @return static
+    */
+    public function setTo(string $email, string $name = null)
+    {
+        $this->mandrillParams['to'] = [];        
+
+        return $this->addTo($email, $name);
+    }
+    
+    /**
     * @inheritdoc
     */
     public function addTo(string $email, string $name = null)
     {
         if (!isset($this->mandrillParams['to'])) {
-            $this->mandrillParams['to'] = [];
+            return $this->setTo($email, $name);
         }
         $recipient = ['email' => $email];
         if ($name !== null) {
